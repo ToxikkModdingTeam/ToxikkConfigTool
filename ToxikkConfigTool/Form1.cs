@@ -56,7 +56,8 @@ namespace ToxikkConfigTool
       if (!ValidateConfigFolder())
         return;
       var fixer = new IniFixer(Path.GetDirectoryName(this.txtPath.Text));
-      fixer.Upgrade();
+      var log = fixer.Upgrade();
+      File.WriteAllText(Path.Combine(this.txtPath.Text, "Patch.ini"), log);
     }
 
     private bool ValidateConfigFolder()

@@ -11,10 +11,7 @@ namespace ToxikkConfigTool
   class IniFixer
   {
     private static readonly DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    private static readonly List<string> defaultInis = new List<string>
-    {
-      "CharInfo", "CustomChar", "Editor", "EditorKeyBindings", "EditorUserSettings", "Engine", "Game", "Input", "Lightmass", "MapList", "SystemSettings", "UI", "Weapon"
-    };
+    private static readonly string[] defaultInis = { "CharInfo", "CustomChar", "Editor", "EditorKeyBindings", "EditorUserSettings", "Engine", "Game", "Input", "Lightmass", "MapList", "SystemSettings", "UI", "Weapon" };
     private readonly string configFolder;
 
     public IniFixer(string configFolder)
@@ -22,8 +19,41 @@ namespace ToxikkConfigTool
       this.configFolder = configFolder;
     }
 
+    #region GetTimestamp()
+    /// <summary>
+    /// This method creates a timestamp for a Default*.ini file as it is expected by the bugged UDK.exe code.
+    /// It simulates the same broken daylight saving handling where the expected timestamp depends on both the time zone offset of the file's timestamp and the current date.
+    /// If one date falls into daylight saving time and the other doesn't, the timestamp expected by UDK is off by an hour.
+    /// </summary>
+    public long GetTimestamp(string file)
+    {
+      // emulate the bugged UE3 code
+      var fltime = File.GetLastWriteTime(file);
+      var futime = File.GetLastWriteTimeUtc(file);
+
+      if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(DateTime.Now))
+      {
+        if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(fltime))
+          return (futime - epoch).Ticks / TimeSpan.TicksPerSecond;
+        return (futime - epoch).Ticks / TimeSpan.TicksPerSecond + 3600;
+
+      }
+      else
+      {
+        if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(fltime))
+          return (futime - epoch).Ticks / TimeSpan.TicksPerSecond - 3600;
+        return (futime - epoch).Ticks / TimeSpan.TicksPerSecond;
+      }
+    }
+    #endregion
+
     #region FixTimestamps()
-    public void FixTimestamps()
+    /// <summary>
+    /// Sets the timestamps inside a UDK*.ini file's [IniVersion] section to match the file timestamps of the corresponding Default*.ini files and their base files.
+    /// Optionally this can be limited to files where the timestamp is off by exactly one hour to fix the timestamps for the current daylight saving time.
+    /// </summary>
+    /// <param name="daylightSavingCorrectionOnly"></param>
+    public void FixTimestamps(bool daylightSavingCorrectionOnly = false)
     {
       foreach (var udkIniFilePath in Directory.GetFiles(configFolder, "UDK*.ini"))
       {
@@ -36,15 +66,33 @@ namespace ToxikkConfigTool
         if (sec == null)
           continue;
 
+        bool saveFile = true;
         List<long> timestamps = new List<long>();
         CollectDefaultIniTimestamps(defaultIniFilePath, timestamps);
-        sec.RemoveAll();
         for (int i = 0; i < timestamps.Count; i++)
-          sec.Add(i.ToString(), timestamps[i].ToString());
-        ini.Save();
+        {
+          var newTimestamp = timestamps[i];
+          if (daylightSavingCorrectionOnly)
+          {
+            var oldTimestamp = (long) sec.GetDecimal(i.ToString());
+            if (oldTimestamp != 0 && oldTimestamp != newTimestamp && Math.Abs(oldTimestamp - newTimestamp) != 3600)
+            {
+              saveFile = false;
+              break;
+            }
+          }
+          sec.Set(i.ToString(), newTimestamp.ToString());
+        }
+
+        if (saveFile)
+          ini.Save();
       }
     }
 
+    /// <summary>
+    /// Recursively collect the timestamps from a file's [IniVersion] section and all the files included through [Configuration].BasedOn
+    /// The most basic file can be found at index 0.
+    /// </summary>
     private void CollectDefaultIniTimestamps(string defaultIniFilePath, List<long> timestamps)
     {
       IniFile defaultIni = new IniFile(defaultIniFilePath);
@@ -62,6 +110,9 @@ namespace ToxikkConfigTool
 
     #region GenerateUdkConfigFiles()
 
+    /// <summary>
+    /// This method starts with the known Default*.ini files and generates the corresponding UDK*.ini files.
+    /// </summary>
     public void GenerateUdkConfigFiles()
     {
       foreach (var file in defaultInis)
@@ -74,6 +125,9 @@ namespace ToxikkConfigTool
       }
     }
 
+    /// <summary>
+    /// Based on a Default*.ini, this method generates an in-memory version of a UDK*.ini file
+    /// </summary>
     private void GenerateIni(string defIniPath, IniFile udkIni)
     {
       var defIni = new IniFile(defIniPath);
@@ -129,12 +183,28 @@ namespace ToxikkConfigTool
 
     #region Upgrade()
 
-    public void Upgrade()
+    /// <summary>
+    /// This method upgrades UDK*.ini files from an older game version to a newer version, taking both REAKKTOR and user changes into account.
+    /// It uses two diff sets: 
+    /// a) between the new Default*.ini files and the old Default*.ini files
+    /// b) between the users's current config (UDK*.ini) and the old Default*.ini files that the current config was based on.
+    /// The new config is generated from the new Default*.ini files and then applying patches a) and b)
+    /// In case a line was changed in both a) and b), the change in a) will have priority (REAKKTOR over user)
+    /// </summary>
+    /// <remarks>
+    /// A caveat to this is that when the Default*.ini don't match exactly what is being saved by UDK.exe (e.g. missing settings), these differences are treated as user changes.
+    /// There is no known problem with this, it just makes the diff list longer.
+    /// </remarks>
+    /// <returns>
+    /// A string with the lines removed and added to the configuration generated from the new Default*.ini files.
+    /// This is the same syntax used by the ToxikkServerLauncher *.ini format (using += and -= for adding and removing lines).
+    /// </returns>
+    public string Upgrade()
     {
       var sb = new StringBuilder();
       foreach(var coreFile in defaultInis)
         Upgrade(coreFile, sb);
-      File.WriteAllText(Path.Combine(configFolder, "Patch.ini"), sb.ToString());
+      return sb.ToString();
     }
 
     private void Upgrade(string coreFileName, StringBuilder flatDiff)
@@ -253,29 +323,6 @@ namespace ToxikkConfigTool
       if (decimal.TryParse(a, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out da) && decimal.TryParse(b, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out db))
         return da - db == 0;
       return a.Replace(" ", "").Replace("%GAME%", "UDK").Trim('"') == b.Replace(" ", "").Replace("%GAME%", "UDK").Trim('"');
-    }
-    #endregion
-
-    #region GetTimestamp()
-    private long GetTimestamp(string file)
-    {
-      // emulate the bugged UE3 code
-      var fltime = File.GetLastWriteTime(file);
-      var futime = File.GetLastWriteTimeUtc(file);
-      
-      if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(DateTime.Now))
-      {
-        if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(fltime))
-          return (futime - epoch).Ticks / TimeSpan.TicksPerSecond;
-        return (futime - epoch).Ticks/TimeSpan.TicksPerSecond + 3600;
-
-      }
-      else
-      {
-        if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(fltime))
-          return (futime - epoch).Ticks / TimeSpan.TicksPerSecond - 3600;
-        return (futime - epoch).Ticks/TimeSpan.TicksPerSecond;
-      }
     }
     #endregion
   }
