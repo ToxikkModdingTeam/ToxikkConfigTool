@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Win32;
 using ToxikkServerLauncher;
 
 namespace ToxikkConfigTool
@@ -22,29 +23,44 @@ namespace ToxikkConfigTool
     #region GetTimestamp()
     /// <summary>
     /// This method creates a timestamp for a Default*.ini file as it is expected by the bugged UDK.exe code.
-    /// It simulates the same broken daylight saving handling where the expected timestamp depends on both the time zone offset of the file's timestamp and the current date.
-    /// If one date falls into daylight saving time and the other doesn't, the timestamp expected by UDK is off by an hour.
+    /// If Windows' automatic DST adjustment is disabled (not-default), the timestamps inside the UDK .ini are correct UTC epoch timestamps.
+    /// With DST adjustment enabled, the timestamp is 1 hours off (early or late) depending on today's DST setting and if the default file's date is in DST
     /// </summary>
     public long GetTimestamp(string file)
     {
-      // emulate the bugged UE3 code
-      var fltime = File.GetLastWriteTime(file);
-      var futime = File.GetLastWriteTimeUtc(file);
+      var defaultFileTimeUtc = File.GetLastWriteTimeUtc(file);
 
-      if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(DateTime.Now))
+      int offset = 0;
+      if (GetWindowsAutomaticDaylightSavingAdjustment())
       {
-        if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(fltime))
-          return (futime - epoch).Ticks / TimeSpan.TicksPerSecond;
-        return (futime - epoch).Ticks / TimeSpan.TicksPerSecond + 3600;
-
+        if (TimeZoneInfo.Local.IsDaylightSavingTime(DateTime.UtcNow))
+        {
+          if (!TimeZoneInfo.Local.IsDaylightSavingTime(defaultFileTimeUtc))
+            offset = +3600;
+        }
+        else
+        {
+          if (TimeZoneInfo.Local.IsDaylightSavingTime(defaultFileTimeUtc))
+            offset = -3600;
+        }
       }
-      else
+
+      return (defaultFileTimeUtc - epoch).Ticks / TimeSpan.TicksPerSecond + offset;
+    }
+
+    private bool GetWindowsAutomaticDaylightSavingAdjustment()
+    {
+      try
       {
-        if (TimeZone.CurrentTimeZone.IsDaylightSavingTime(fltime))
-          return (futime - epoch).Ticks / TimeSpan.TicksPerSecond - 3600;
-        return (futime - epoch).Ticks / TimeSpan.TicksPerSecond;
+        var result = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\TimeZoneInformation", "DynamicDaylightTimeDisabled", 1);
+        return !Convert.ToBoolean(result); //0 - Checked/enabled,  1 - Unchecked/disabled
+      }
+      catch
+      {
+        return false;
       }
     }
+
     #endregion
 
     #region FixTimestamps()
