@@ -25,7 +25,8 @@ namespace ToxikkConfigTool.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Program Files (x86)\\Steam\\SteamApps\\Common\\TOXIKK\\UDKGame\\Config\\DefaultGame.i" +
+            "ni")]
         public string ToxikkConfigDir {
             get {
                 return ((string)(this["ToxikkConfigDir"]));

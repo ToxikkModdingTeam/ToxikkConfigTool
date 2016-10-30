@@ -34,6 +34,7 @@
       this.btnFixTimestamps = new System.Windows.Forms.Button();
       this.btnGenerateUdkIni = new System.Windows.Forms.Button();
       this.btnUpgrade = new System.Windows.Forms.Button();
+      this.btnFixDstTimestamps = new System.Windows.Forms.Button();
       this.SuspendLayout();
       // 
       // label1
@@ -67,39 +68,52 @@
       // 
       // btnFixTimestamps
       // 
-      this.btnFixTimestamps.Location = new System.Drawing.Point(13, 74);
+      this.btnFixTimestamps.Location = new System.Drawing.Point(165, 88);
       this.btnFixTimestamps.Name = "btnFixTimestamps";
       this.btnFixTimestamps.Size = new System.Drawing.Size(105, 23);
       this.btnFixTimestamps.TabIndex = 3;
-      this.btnFixTimestamps.Text = "Fix Timestamps";
+      this.btnFixTimestamps.Text = "Fix all Timestamps";
       this.btnFixTimestamps.UseVisualStyleBackColor = true;
       this.btnFixTimestamps.Click += new System.EventHandler(this.btnFixTimestamps_Click);
       // 
       // btnGenerateUdkIni
       // 
-      this.btnGenerateUdkIni.Location = new System.Drawing.Point(136, 74);
+      this.btnGenerateUdkIni.Location = new System.Drawing.Point(288, 88);
       this.btnGenerateUdkIni.Name = "btnGenerateUdkIni";
       this.btnGenerateUdkIni.Size = new System.Drawing.Size(105, 23);
       this.btnGenerateUdkIni.TabIndex = 4;
       this.btnGenerateUdkIni.Text = "Generate UDK*.ini";
       this.btnGenerateUdkIni.UseVisualStyleBackColor = true;
+      this.btnGenerateUdkIni.Visible = false;
       this.btnGenerateUdkIni.Click += new System.EventHandler(this.btnGenerateUdkIni_Click);
       // 
       // btnUpgrade
       // 
-      this.btnUpgrade.Location = new System.Drawing.Point(260, 74);
+      this.btnUpgrade.Location = new System.Drawing.Point(412, 88);
       this.btnUpgrade.Name = "btnUpgrade";
       this.btnUpgrade.Size = new System.Drawing.Size(105, 23);
       this.btnUpgrade.TabIndex = 5;
       this.btnUpgrade.Text = "Upgrade Config";
       this.btnUpgrade.UseVisualStyleBackColor = true;
+      this.btnUpgrade.Visible = false;
       this.btnUpgrade.Click += new System.EventHandler(this.btnUpgrade_Click);
+      // 
+      // btnFixDstTimestamps
+      // 
+      this.btnFixDstTimestamps.Location = new System.Drawing.Point(13, 88);
+      this.btnFixDstTimestamps.Name = "btnFixDstTimestamps";
+      this.btnFixDstTimestamps.Size = new System.Drawing.Size(130, 23);
+      this.btnFixDstTimestamps.TabIndex = 6;
+      this.btnFixDstTimestamps.Text = "Fix DST Timestamps";
+      this.btnFixDstTimestamps.UseVisualStyleBackColor = true;
+      this.btnFixDstTimestamps.Click += new System.EventHandler(this.btnFixDstTimestamps_Click);
       // 
       // Form1
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(584, 123);
+      this.Controls.Add(this.btnFixDstTimestamps);
       this.Controls.Add(this.btnUpgrade);
       this.Controls.Add(this.btnGenerateUdkIni);
       this.Controls.Add(this.btnFixTimestamps);
@@ -121,6 +135,7 @@
     private System.Windows.Forms.Button btnFixTimestamps;
     private System.Windows.Forms.Button btnGenerateUdkIni;
     private System.Windows.Forms.Button btnUpgrade;
+    private System.Windows.Forms.Button btnFixDstTimestamps;
   }
 }
 

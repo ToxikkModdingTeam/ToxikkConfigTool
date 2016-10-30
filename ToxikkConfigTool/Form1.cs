@@ -35,12 +35,28 @@ namespace ToxikkConfigTool
       }
     }
 
+    private void btnFixDstTimestamps_Click(object sender, EventArgs e)
+    {
+      this.FixTimestamps(true);
+      MessageBox.Show("Timestamps inside the UDK*.ini files have been adjust to the current daylight saving status.", 
+        "UE3 Daylight Saving patch", 
+        MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
     private void btnFixTimestamps_Click(object sender, EventArgs e)
+    {
+      this.FixTimestamps(false);
+      MessageBox.Show("Timestamps inside the UDK*.ini files have been adjust to match the file timestamp of the Default*.ini files.",
+        "UE3 Daylight Saving patch",
+        MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    private void FixTimestamps(bool dstOnly)
     {
       if (!ValidateConfigFolder())
         return;
       var fixer = new IniFixer(Path.GetDirectoryName(this.txtPath.Text));
-      fixer.FixTimestamps();
+      fixer.FixTimestamps(dstOnly);
     }
 
     private void btnGenerateUdkIni_Click(object sender, EventArgs e)
@@ -70,6 +86,5 @@ namespace ToxikkConfigTool
       }
       return true;
     }
-
   }
 }

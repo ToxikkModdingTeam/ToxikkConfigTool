@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="ToxikkConfigDir" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
+      <Value Profile="(Default)">C:\Program Files (x86)\Steam\SteamApps\Common\TOXIKK\UDKGame\Config\DefaultGame.ini</Value>
     </Setting>
   </Settings>
 </SettingsFile>
